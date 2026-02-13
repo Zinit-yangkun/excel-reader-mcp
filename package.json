@@ -4,6 +4,12 @@
   "description": "MCP server for reading Excel files with automatic chunking and pagination support",
   "type": "module",
   "main": "build/index.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "start": "node build/index.js",
+    "example": "npx tsx ./examples/basic-usage.ts"
+  },
   "bin": {
     "excel-reader": "./build/index.js"
   },
@@ -26,13 +32,8 @@
     "url": "https://github.com/ArchimdesCrypto/excel-reader-mcp/issues"
   },
   "homepage": "https://github.com/ArchimdesCrypto/excel-reader-mcp#readme",
-  "scripts": {
-    "build": "tsc",
-    "watch": "tsc -w",
-    "start": "node build/index.js"
-  },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.4.1",
+    "@modelcontextprotocol/sdk": "1.26.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.1/xlsx-0.20.1.tgz"
   },
   "devDependencies": {

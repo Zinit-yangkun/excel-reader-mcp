@@ -44,6 +44,10 @@ interface ReadExcelArgs {
 
 const MAX_RESPONSE_SIZE = 100 * 1024; // 100KB default max response size
 
+interface ListSheetsArgs {
+  filePath: string;
+}
+
 const isValidReadExcelArgs = (args: any): args is ReadExcelArgs =>
   typeof args === 'object' &&
   args !== null &&
@@ -51,6 +55,11 @@ const isValidReadExcelArgs = (args: any): args is ReadExcelArgs =>
   (args.sheetName === undefined || typeof args.sheetName === 'string') &&
   (args.startRow === undefined || typeof args.startRow === 'number') &&
   (args.maxRows === undefined || typeof args.maxRows === 'number');
+
+const isValidListSheetsArgs = (args: any): args is ListSheetsArgs =>
+  typeof args === 'object' &&
+  args !== null &&
+  typeof args.filePath === 'string';
 
 // Estimate size of stringified JSON
 const estimateJsonSize = (obj: any): number => {
@@ -195,41 +204,97 @@ class ExcelReaderServer {
             required: ['filePath'],
           },
         },
+        {
+          name: 'list_sheets',
+          description: 'List all sheet names in an Excel file',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              filePath: {
+                type: 'string',
+                description: 'Path to the Excel file',
+              },
+            },
+            required: ['filePath'],
+          },
+        },
       ],
     }));
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      if (request.params.name !== 'read_excel') {
+      const { name } = request.params;
+
+      if (name === 'read_excel') {
+        if (!isValidReadExcelArgs(request.params.arguments)) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            'Invalid read_excel arguments'
+          );
+        }
+
+        try {
+          const data = this.readExcelFile(request.params.arguments);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(data, null, 2),
+              },
+            ],
+          };
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Unexpected error: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
+      } else if (name === 'list_sheets') {
+        if (!isValidListSheetsArgs(request.params.arguments)) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            'Invalid list_sheets arguments'
+          );
+        }
+
+        const { filePath } = request.params.arguments;
+        if (!existsSync(filePath)) {
+          throw new McpError(
+            ErrorCode.InvalidRequest,
+            `File not found: ${filePath}`
+          );
+        }
+
+        try {
+          const data = readFileSync(filePath);
+          const workbook = XLSX.read(data, { type: 'buffer' });
+          const fileName = filePath.split(/[\\/]/).pop() || '';
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  fileName,
+                  sheets: workbook.SheetNames,
+                }, null, 2),
+              },
+            ],
+          };
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error reading Excel file: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
+      } else {
         throw new McpError(
           ErrorCode.MethodNotFound,
-          `Unknown tool: ${request.params.name}`
-        );
-      }
-
-      if (!isValidReadExcelArgs(request.params.arguments)) {
-        throw new McpError(
-          ErrorCode.InvalidParams,
-          'Invalid read_excel arguments'
-        );
-      }
-
-      try {
-        const data = this.readExcelFile(request.params.arguments);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(data, null, 2),
-            },
-          ],
-        };
-      } catch (error) {
-        if (error instanceof McpError) {
-          throw error;
-        }
-        throw new McpError(
-          ErrorCode.InternalError,
-          `Unexpected error: ${error instanceof Error ? error.message : String(error)}`
+          `Unknown tool: ${name}`
         );
       }
     });

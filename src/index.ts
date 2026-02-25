@@ -9,44 +9,10 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import * as XLSX from 'xlsx';
 import { existsSync, readFileSync } from 'fs';
-
-interface ExcelChunk {
-  rowStart: number;
-  rowEnd: number;
-  columns: string[];
-  data: Record<string, any>[];
-}
-
-interface ExcelSheetData {
-  name: string;
-  totalRows: number;
-  totalColumns: number;
-  chunk: ExcelChunk;
-  hasMore: boolean;
-  nextChunk?: {
-    rowStart: number;
-    columns: string[];
-  };
-}
-
-interface ExcelData {
-  fileName: string;
-  totalSheets: number;
-  currentSheet: ExcelSheetData;
-}
-
-interface ReadExcelArgs {
-  filePath: string;
-  sheetName?: string;
-  startRow?: number;
-  maxRows?: number;
-}
+import { extractImages } from './image-extractor.js';
+import type { ExcelData, ReadExcelArgs, ListSheetsArgs, GetExcelImagesArgs } from './types.js';
 
 const MAX_RESPONSE_SIZE = 100 * 1024; // 100KB default max response size
-
-interface ListSheetsArgs {
-  filePath: string;
-}
 
 const isValidReadExcelArgs = (args: any): args is ReadExcelArgs =>
   typeof args === 'object' &&
@@ -60,6 +26,12 @@ const isValidListSheetsArgs = (args: any): args is ListSheetsArgs =>
   typeof args === 'object' &&
   args !== null &&
   typeof args.filePath === 'string';
+
+const isValidGetExcelImagesArgs = (args: any): args is GetExcelImagesArgs =>
+  typeof args === 'object' &&
+  args !== null &&
+  typeof args.filePath === 'string' &&
+  (args.sheetName === undefined || typeof args.sheetName === 'string');
 
 // Estimate size of stringified JSON
 const estimateJsonSize = (obj: any): number => {
@@ -90,7 +62,7 @@ class ExcelReaderServer {
     );
 
     this.setupToolHandlers();
-    
+
     // Error handling
     this.server.onerror = (error) => console.error('[MCP Error]', error);
     process.on('SIGINT', async () => {
@@ -143,7 +115,7 @@ class ExcelReaderServer {
 
       const endRow = Math.min(startRow + effectiveMaxRows, totalRows);
       const chunkData = allData.slice(startRow, endRow);
-      
+
       const hasMore = endRow < totalRows;
       const nextChunk = hasMore ? {
         rowStart: endRow,
@@ -213,6 +185,24 @@ class ExcelReaderServer {
               filePath: {
                 type: 'string',
                 description: 'Path to the Excel file',
+              },
+            },
+            required: ['filePath'],
+          },
+        },
+        {
+          name: 'get_excel_images',
+          description: 'Extract embedded images from an Excel (.xlsx) file, including position information (sheet, row, column). Returns image metadata and base64-encoded image data.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              filePath: {
+                type: 'string',
+                description: 'Path to the Excel (.xlsx) file',
+              },
+              sheetName: {
+                type: 'string',
+                description: 'Only return images from this sheet (optional, returns all sheets if omitted)',
               },
             },
             required: ['filePath'],
@@ -289,6 +279,73 @@ class ExcelReaderServer {
           throw new McpError(
             ErrorCode.InternalError,
             `Error reading Excel file: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
+      } else if (name === 'get_excel_images') {
+        if (!isValidGetExcelImagesArgs(request.params.arguments)) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            'Invalid get_excel_images arguments'
+          );
+        }
+
+        try {
+          const { images, truncated } = await extractImages(request.params.arguments);
+          const fileName = request.params.arguments.filePath.split(/[\\/]/).pop() || '';
+
+          const warnings: string[] = [];
+          if (truncated) {
+            warnings.push('Image data was truncated because total size exceeded 10MB limit. Some images were omitted.');
+          }
+
+          // Check for EMF/WMF images
+          const unsupportedFormats = images.filter(
+            img => img.mimeType === 'image/x-emf' || img.mimeType === 'image/x-wmf'
+          );
+          if (unsupportedFormats.length > 0) {
+            warnings.push(
+              `${unsupportedFormats.length} image(s) are in EMF/WMF format, which most clients cannot display: ${unsupportedFormats.map(i => i.name).join(', ')}`
+            );
+          }
+
+          const metadata = {
+            fileName,
+            imageCount: images.length,
+            images: images.map(({ name, mimeType, positions }) => ({
+              name,
+              mimeType,
+              positions,
+            })),
+            ...(warnings.length > 0 ? { warnings } : {}),
+          };
+
+          const content: any[] = [
+            {
+              type: 'text',
+              text: JSON.stringify(metadata, null, 2),
+            },
+          ];
+
+          // Add image content blocks for displayable images
+          for (const img of images) {
+            if (img.mimeType === 'image/x-emf' || img.mimeType === 'image/x-wmf') {
+              continue; // Skip non-displayable formats
+            }
+            content.push({
+              type: 'image',
+              data: img.data,
+              mimeType: img.mimeType,
+            });
+          }
+
+          return { content };
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Error extracting images: ${error instanceof Error ? error.message : String(error)}`
           );
         }
       } else {

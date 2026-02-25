@@ -34,6 +34,7 @@
   "homepage": "https://github.com/ArchimdesCrypto/excel-reader-mcp#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.26.0",
+    "cfb": "^1.2.2",
     "jszip": "3.10.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.1/xlsx-0.20.1.tgz"
   },

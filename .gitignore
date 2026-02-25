@@ -31,6 +31,3 @@ logs/
 # Temporary files
 *.tmp
 *.temp
-
-# Test data
-examples/data/

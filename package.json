@@ -8,7 +8,9 @@
     "build": "tsc",
     "watch": "tsc -w",
     "start": "node build/index.js",
-    "example": "npx tsx ./examples/basic-usage.ts"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "bin": {
     "excel-reader": "./build/index.js"
@@ -40,6 +42,8 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
-    "typescript": "^5.3.3"
+    "@vitest/coverage-v8": "^4.0.18",
+    "typescript": "^5.3.3",
+    "vitest": "^4.0.18"
   }
 }

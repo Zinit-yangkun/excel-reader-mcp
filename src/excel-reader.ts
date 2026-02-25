@@ -4,12 +4,12 @@ import type { ExcelData, ListSheetsArgs, ReadExcelArgs } from "./types.js";
 
 const MAX_RESPONSE_SIZE = 100 * 1024; // 100KB default max response size
 
-export const estimateJsonSize = (obj: any): number => {
+export const estimateJsonSize = (obj: unknown): number => {
   const str = JSON.stringify(obj);
   return str.length * 2; // Rough estimate, multiply by 2 for unicode
 };
 
-export const calculateChunkSize = (data: any[], maxSize: number): number => {
+export const calculateChunkSize = (data: Record<string, unknown>[], maxSize: number): number => {
   const singleRowSize = estimateJsonSize(data[0]);
   return Math.max(1, Math.floor(maxSize / singleRowSize));
 };
@@ -34,7 +34,7 @@ export function readExcelFile(args: ReadExcelArgs): ExcelData {
   const allData = XLSX.utils.sheet_to_json(worksheet, {
     raw: true,
     dateNF: "yyyy-mm-dd",
-  }) as Record<string, any>[];
+  }) as Record<string, unknown>[];
 
   const totalRows = allData.length;
   const columns = totalRows > 0 ? Object.keys(allData[0] as object) : [];

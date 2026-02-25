@@ -50,7 +50,7 @@ describe("read_excel", () => {
       arguments: { filePath: join(testDir, "basic.xlsx") },
     });
 
-    const data = JSON.parse((result.content as any)[0].text);
+    const data = JSON.parse((result.content as { type: string; text: string }[])[0].text);
     const rows = data.currentSheet.chunk.data;
 
     expect(rows[0].Name).toBe("Alice");
@@ -70,7 +70,7 @@ describe("read_excel", () => {
       },
     });
 
-    const data = JSON.parse((result.content as any)[0].text);
+    const data = JSON.parse((result.content as { type: string; text: string }[])[0].text);
     expect(data.currentSheet.name).toBe("Cities");
     expect(data.currentSheet.chunk.data[0].City).toBe("Tokyo");
     expect(data.currentSheet.chunk.data[0].Population).toBe(13960000);
@@ -86,7 +86,7 @@ describe("read_excel", () => {
       },
     });
 
-    const data = JSON.parse((result.content as any)[0].text);
+    const data = JSON.parse((result.content as { type: string; text: string }[])[0].text);
     expect(data.currentSheet.chunk.rowStart).toBe(1);
     expect(data.currentSheet.chunk.rowEnd).toBe(2);
     expect(data.currentSheet.chunk.data).toHaveLength(1);
@@ -100,7 +100,7 @@ describe("read_excel", () => {
       arguments: { filePath: join(testDir, "large.xlsx") },
     });
 
-    const data = JSON.parse((result.content as any)[0].text);
+    const data = JSON.parse((result.content as { type: string; text: string }[])[0].text);
     expect(data.currentSheet.totalRows).toBe(600);
     // auto-chunking should limit the rows returned
     expect(data.currentSheet.chunk.data.length).toBeLessThan(600);
@@ -115,7 +115,7 @@ describe("read_excel", () => {
       arguments: { filePath: join(testDir, "empty.xlsx") },
     });
 
-    const data = JSON.parse((result.content as any)[0].text);
+    const data = JSON.parse((result.content as { type: string; text: string }[])[0].text);
     expect(data.currentSheet.totalRows).toBe(0);
     expect(data.currentSheet.chunk.data).toHaveLength(0);
     expect(data.currentSheet.hasMore).toBe(false);

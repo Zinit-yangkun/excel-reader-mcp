@@ -181,7 +181,7 @@ export async function extractImages(args: GetExcelImagesArgs): Promise<{
 
       for (const pattern of anchorPatterns) {
         const isTwoCell = pattern.source.includes("twoCellAnchor");
-        let match;
+        let match: RegExpExecArray | null;
         while ((match = pattern.exec(drawingXml)) !== null) {
           const anchorContent = match[1];
 

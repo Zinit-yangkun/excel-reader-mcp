@@ -2,7 +2,7 @@ export interface ExcelChunk {
   rowStart: number;
   rowEnd: number;
   columns: string[];
-  data: Record<string, any>[];
+  data: Record<string, unknown>[];
 }
 
 export interface ExcelSheetData {

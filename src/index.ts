@@ -1,25 +1,32 @@
 #!/usr/bin/env node
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { CallToolRequestSchema, ErrorCode, ListToolsRequestSchema, McpError } from "@modelcontextprotocol/sdk/types.js";
+import {
+  CallToolRequestSchema,
+  ErrorCode,
+  type ImageContent,
+  ListToolsRequestSchema,
+  McpError,
+  type TextContent,
+} from "@modelcontextprotocol/sdk/types.js";
 import { listSheets, readExcelFile } from "./excel-reader.js";
 import { extractImages } from "./image-extractor.js";
 import type { GetExcelImagesArgs, ListSheetsArgs, ReadExcelArgs } from "./types.js";
 
-const isValidReadExcelArgs = (args: any): args is ReadExcelArgs =>
-  typeof args === "object" &&
-  args !== null &&
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
+
+const isValidReadExcelArgs = (args: unknown): args is ReadExcelArgs =>
+  isRecord(args) &&
   typeof args.filePath === "string" &&
   (args.sheetName === undefined || typeof args.sheetName === "string") &&
   (args.startRow === undefined || typeof args.startRow === "number") &&
   (args.maxRows === undefined || typeof args.maxRows === "number");
 
-const isValidListSheetsArgs = (args: any): args is ListSheetsArgs =>
-  typeof args === "object" && args !== null && typeof args.filePath === "string";
+const isValidListSheetsArgs = (args: unknown): args is ListSheetsArgs =>
+  isRecord(args) && typeof args.filePath === "string";
 
-const isValidGetExcelImagesArgs = (args: any): args is GetExcelImagesArgs =>
-  typeof args === "object" &&
-  args !== null &&
+const isValidGetExcelImagesArgs = (args: unknown): args is GetExcelImagesArgs =>
+  isRecord(args) &&
   typeof args.filePath === "string" &&
   (args.sheetName === undefined || typeof args.sheetName === "string");
 
@@ -200,7 +207,7 @@ class ExcelReaderServer {
             ...(warnings.length > 0 ? { warnings } : {}),
           };
 
-          const content: any[] = [
+          const content: (TextContent | ImageContent)[] = [
             {
               type: "text",
               text: JSON.stringify(metadata, null, 2),

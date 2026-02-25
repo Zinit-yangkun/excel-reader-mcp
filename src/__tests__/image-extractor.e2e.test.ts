@@ -36,21 +36,27 @@ describe("get_excel_images - xlsx", () => {
       arguments: { filePath: xlsxImagePath },
     });
 
-    const content = result.content as any[];
+    const content = result.content as { type: string; text?: string; data?: string; mimeType?: string }[];
     // First content block is metadata JSON
-    const metadata = JSON.parse(content[0].text);
+    const metadata = JSON.parse(content[0].text!);
     expect(metadata.imageCount).toBe(2);
     expect(metadata.images).toHaveLength(2);
 
     // Check image names and mime types
-    const imageNames = metadata.images.map((img: any) => img.name).sort();
+    const imageNames = metadata.images
+      .map((img: { name: string; mimeType: string; positions: { sheet: string }[] }) => img.name)
+      .sort();
     expect(imageNames).toContain("image1.png");
     expect(imageNames).toContain("image2.jpeg");
 
-    const pngImage = metadata.images.find((img: any) => img.name === "image1.png");
+    const pngImage = metadata.images.find(
+      (img: { name: string; mimeType: string; positions: { sheet: string }[] }) => img.name === "image1.png",
+    );
     expect(pngImage.mimeType).toBe("image/png");
 
-    const jpegImage = metadata.images.find((img: any) => img.name === "image2.jpeg");
+    const jpegImage = metadata.images.find(
+      (img: { name: string; mimeType: string; positions: { sheet: string }[] }) => img.name === "image2.jpeg",
+    );
     expect(jpegImage.mimeType).toBe("image/jpeg");
   });
 
@@ -60,13 +66,15 @@ describe("get_excel_images - xlsx", () => {
       arguments: { filePath: xlsxImagePath },
     });
 
-    const metadata = JSON.parse((result.content as any)[0].text);
+    const metadata = JSON.parse((result.content as { type: string; text: string }[])[0].text);
 
     // image1.png appears on both sheets
-    const pngImage = metadata.images.find((img: any) => img.name === "image1.png");
+    const pngImage = metadata.images.find(
+      (img: { name: string; mimeType: string; positions: { sheet: string }[] }) => img.name === "image1.png",
+    );
     expect(pngImage.positions.length).toBeGreaterThanOrEqual(1);
     // At least one position should be on Sheet1
-    const sheet1Pos = pngImage.positions.find((p: any) => p.sheet === "Sheet1");
+    const sheet1Pos = pngImage.positions.find((p: { sheet: string }) => p.sheet === "Sheet1");
     expect(sheet1Pos).toBeDefined();
     expect(sheet1Pos.fromRow).toBe(0);
     expect(sheet1Pos.fromCol).toBe(0);
@@ -80,9 +88,9 @@ describe("get_excel_images - xlsx", () => {
       arguments: { filePath: xlsxImagePath },
     });
 
-    const content = result.content as any[];
+    const content = result.content as { type: string; text?: string; data?: string; mimeType?: string }[];
     // Should have metadata + image content blocks
-    const imageBlocks = content.filter((c: any) => c.type === "image");
+    const imageBlocks = content.filter((c: { type: string }) => c.type === "image");
     expect(imageBlocks.length).toBeGreaterThanOrEqual(2);
     for (const block of imageBlocks) {
       expect(block.data).toBeTruthy();
@@ -96,11 +104,11 @@ describe("get_excel_images - xlsx", () => {
       arguments: { filePath: xlsxImagePath, sheetName: "Sheet2" },
     });
 
-    const metadata = JSON.parse((result.content as any)[0].text);
+    const metadata = JSON.parse((result.content as { type: string; text: string }[])[0].text);
     // Only images referenced on Sheet2 should be returned
     for (const img of metadata.images) {
       if (img.positions.length > 0) {
-        expect(img.positions.every((p: any) => p.sheet === "Sheet2")).toBe(true);
+        expect(img.positions.every((p: { sheet: string }) => p.sheet === "Sheet2")).toBe(true);
       }
     }
   });
@@ -113,11 +121,13 @@ describe("get_excel_images - xls", () => {
       arguments: { filePath: xlsImagePath },
     });
 
-    const content = result.content as any[];
-    const metadata = JSON.parse(content[0].text);
+    const content = result.content as { type: string; text?: string; data?: string; mimeType?: string }[];
+    const metadata = JSON.parse(content[0].text!);
     expect(metadata.imageCount).toBeGreaterThanOrEqual(1);
 
-    const pngImage = metadata.images.find((img: any) => img.mimeType === "image/png");
+    const pngImage = metadata.images.find(
+      (img: { name: string; mimeType: string; positions: { sheet: string }[] }) => img.mimeType === "image/png",
+    );
     expect(pngImage).toBeDefined();
   });
 
@@ -127,7 +137,7 @@ describe("get_excel_images - xls", () => {
       arguments: { filePath: xlsImagePath },
     });
 
-    const metadata = JSON.parse((result.content as any)[0].text);
+    const metadata = JSON.parse((result.content as { type: string; text: string }[])[0].text);
     const image = metadata.images[0];
     expect(image.positions).toBeDefined();
     expect(image.positions.length).toBeGreaterThanOrEqual(1);
@@ -148,7 +158,7 @@ describe("get_excel_images - edge cases", () => {
       arguments: { filePath: join(testDir, "basic.xlsx") },
     });
 
-    const metadata = JSON.parse((result.content as any)[0].text);
+    const metadata = JSON.parse((result.content as { type: string; text: string }[])[0].text);
     expect(metadata.imageCount).toBe(0);
     expect(metadata.images).toHaveLength(0);
   });

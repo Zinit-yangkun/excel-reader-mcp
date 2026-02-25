@@ -43,7 +43,7 @@ describe("list_sheets", () => {
       arguments: { filePath: join(testDir, "multi-sheet.xlsx") },
     });
 
-    const data = JSON.parse((result.content as any)[0].text);
+    const data = JSON.parse((result.content as { type: string; text: string }[])[0].text);
     expect(data.sheets).toEqual(["Products", "Cities", "Colors"]);
   });
 

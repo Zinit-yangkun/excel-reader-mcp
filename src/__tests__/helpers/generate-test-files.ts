@@ -76,7 +76,7 @@ function createLargeXlsx(testDir: string): void {
   const wb = XLSX.utils.book_new();
   // Create wide rows (20 columns) to ensure total data exceeds 100KB chunk limit
   const headers = Array.from({ length: 20 }, (_, i) => `Column_${i}`);
-  const data: any[][] = [headers];
+  const data: (string | number)[][] = [headers];
   for (let i = 1; i <= 600; i++) {
     const row = Array.from({ length: 20 }, (_, j) => `row_${i}_col_${j}_value_data`);
     data.push(row);

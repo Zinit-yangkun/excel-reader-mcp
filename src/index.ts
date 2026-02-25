@@ -192,13 +192,13 @@ class ExcelReaderServer {
         },
         {
           name: 'get_excel_images',
-          description: 'Extract embedded images from an Excel (.xlsx) file, including position information (sheet, row, column). Returns image metadata and base64-encoded image data.',
+          description: 'Extract embedded images from an Excel file (.xlsx or .xls), including position information (sheet, row, column). Returns image metadata and base64-encoded image data.',
           inputSchema: {
             type: 'object',
             properties: {
               filePath: {
                 type: 'string',
-                description: 'Path to the Excel (.xlsx) file',
+                description: 'Path to the Excel file (.xlsx or .xls)',
               },
               sheetName: {
                 type: 'string',

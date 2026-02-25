@@ -6,6 +6,7 @@ import {
   McpError,
 } from '@modelcontextprotocol/sdk/types.js';
 import type { ExtractedImage, GetExcelImagesArgs, ImagePosition } from './types.js';
+import { extractXlsImages } from './xls-image-extractor.js';
 
 const MIME_TYPES: Record<string, string> = {
   '.png': 'image/png',
@@ -47,12 +48,24 @@ export async function extractImages(args: GetExcelImagesArgs): Promise<{
 
   const buffer = readFileSync(filePath);
 
-  // Verify it's a ZIP file (xlsx)
-  if (buffer.length < 4 || buffer[0] !== 0x50 || buffer[1] !== 0x4b) {
+  // Detect file format by magic bytes
+  if (buffer.length < 4) {
+    throw new McpError(ErrorCode.InvalidRequest, 'File is too small to be a valid Excel file.');
+  }
+
+  const isZip = buffer[0] === 0x50 && buffer[1] === 0x4b; // PK = ZIP (.xlsx)
+  const isOle2 = buffer[0] === 0xd0 && buffer[1] === 0xcf && buffer[2] === 0x11 && buffer[3] === 0xe0; // OLE2 (.xls)
+
+  if (!isZip && !isOle2) {
     throw new McpError(
       ErrorCode.InvalidRequest,
-      'File is not a valid .xlsx file (ZIP format required). .xls files are not supported for image extraction.'
+      'File is not a valid Excel file. Expected .xlsx (ZIP) or .xls (OLE2) format.'
     );
+  }
+
+  // Dispatch to xls extractor for OLE2 format
+  if (isOle2) {
+    return extractXlsImages(args);
   }
 
   const zip = await JSZip.loadAsync(buffer);

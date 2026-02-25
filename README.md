@@ -1,187 +1,82 @@
-[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/archimedescrypto-excel-reader-mcp-badge.png)](https://mseep.ai/app/archimedescrypto-excel-reader-mcp)
+# Excel Reader MCP
 
-# MCP Excel Reader
-
-[![smithery badge](https://smithery.ai/badge/@ArchimedesCrypto/excel-reader-mcp-chunked)](https://smithery.ai/server/@ArchimedesCrypto/excel-reader-mcp-chunked)
-A Model Context Protocol (MCP) server for reading Excel files with automatic chunking and pagination support. Built with SheetJS and TypeScript, this tool helps you handle large Excel files efficiently by automatically breaking them into manageable chunks.
-
-<a href="https://glama.ai/mcp/servers/jr2ggpdk3a"><img width="380" height="200" src="https://glama.ai/mcp/servers/jr2ggpdk3a/badge" alt="Excel Reader MCP server" /></a>
+A [Model Context Protocol](https://modelcontextprotocol.io/) server for reading Excel files. Supports `.xlsx` and `.xls` formats with automatic chunking, pagination, and image extraction.
 
 ## Features
 
-- 📊 Read Excel files (.xlsx, .xls) with automatic size limits
-- 🔄 Automatic chunking for large datasets
-- 📑 Sheet selection and row pagination
-- 📅 Proper date handling
-- ⚡ Optimized for large files
-- 🛡️ Error handling and validation
+- Read Excel files with automatic chunking for large datasets
+- List all sheets in a workbook
+- Extract embedded images with position information
+- Proper date handling
+- Row pagination support
 
 ## Installation
 
-### Installing via Smithery
-
-To install Excel Reader for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@ArchimedesCrypto/excel-reader-mcp-chunked):
-
 ```bash
-npx -y @smithery/cli install @ArchimedesCrypto/excel-reader-mcp-chunked --client claude
+npm install
+npm run build
 ```
 
-### As an MCP Server
+## MCP Configuration
 
-1. Install globally:
-```bash
-npm install -g @archimdescrypto/excel-reader
-```
+Add to your MCP settings:
 
-2. Add to your MCP settings file (usually at `~/.config/claude/settings.json` or equivalent):
 ```json
 {
   "mcpServers": {
     "excel-reader": {
-      "command": "excel-reader",
-      "env": {}
+      "command": "node",
+      "args": ["/path/to/excel-reader-mcp/build/index.js"]
     }
   }
 }
 ```
 
-### For Development
+## Tools
 
-1. Clone the repository:
-```bash
-git clone https://github.com/ArchimdesCrypto/mcp-excel-reader.git
-cd mcp-excel-reader
-```
+### `read_excel`
 
-2. Install dependencies:
+Read an Excel file and return its contents as structured data.
+
+| Parameter   | Required | Description                          |
+| ----------- | -------- | ------------------------------------ |
+| `filePath`  | Yes      | Path to the Excel file               |
+| `sheetName` | No       | Sheet name (defaults to first sheet) |
+| `startRow`  | No       | Starting row index for pagination    |
+| `maxRows`   | No       | Maximum number of rows to read       |
+
+Large files are automatically split into chunks (~100KB). The response includes `hasMore` and `nextChunk` fields for pagination.
+
+### `list_sheets`
+
+List all sheet names in an Excel file.
+
+| Parameter  | Required | Description            |
+| ---------- | -------- | ---------------------- |
+| `filePath` | Yes      | Path to the Excel file |
+
+### `get_excel_images`
+
+Extract embedded images from an Excel file, including position information (sheet, row, column). Returns base64-encoded image data.
+
+| Parameter   | Required | Description                                 |
+| ----------- | -------- | ------------------------------------------- |
+| `filePath`  | Yes      | Path to the Excel file (.xlsx or .xls)      |
+| `sheetName` | No       | Only return images from the specified sheet |
+
+## Development
+
 ```bash
 npm install
-```
-
-3. Build the project:
-```bash
 npm run build
+npm test
 ```
-
-## Usage
-
-## Usage
-
-The Excel Reader provides a single tool `read_excel` with the following parameters:
-
-```typescript
-interface ReadExcelArgs {
-  filePath: string;      // Path to Excel file
-  sheetName?: string;    // Optional sheet name (defaults to first sheet)
-  startRow?: number;     // Optional starting row for pagination
-  maxRows?: number;      // Optional maximum rows to read
-}
-
-// Response format
-interface ExcelResponse {
-  fileName: string;
-  totalSheets: number;
-  currentSheet: {
-    name: string;
-    totalRows: number;
-    totalColumns: number;
-    chunk: {
-      rowStart: number;
-      rowEnd: number;
-      columns: string[];
-      data: Record<string, any>[];
-    };
-    hasMore: boolean;
-    nextChunk?: {
-      rowStart: number;
-      columns: string[];
-    };
-  };
-}
-```
-
-### Basic Usage
-
-When used with Claude or another MCP-compatible AI:
-
-```
-Read the Excel file at path/to/file.xlsx
-```
-
-The AI will use the tool to read the file, automatically handling chunking for large files.
-
-### Features
-
-1. **Automatic Chunking**
-   - Automatically splits large files into manageable chunks
-   - Default chunk size of 100KB
-   - Provides metadata for pagination
-
-2. **Sheet Selection**
-   - Read specific sheets by name
-   - Defaults to first sheet if not specified
-
-3. **Row Pagination**
-   - Control which rows to read with startRow and maxRows
-   - Get next chunk information for continuous reading
-
-4. **Error Handling**
-   - Validates file existence and format
-   - Provides clear error messages
-   - Handles malformed Excel files gracefully
-
-## Extending with SheetJS Features
-
-The Excel Reader is built on SheetJS and can be extended with its powerful features:
-
-### Available Extensions
-
-1. **Formula Handling**
-   ```typescript
-   // Enable formula parsing
-   const wb = XLSX.read(data, {
-     cellFormula: true,
-     cellNF: true
-   });
-   ```
-
-2. **Cell Formatting**
-   ```typescript
-   // Access cell styles and formatting
-   const styles = Object.keys(worksheet)
-     .filter(key => key[0] !== '!')
-     .map(key => ({
-       cell: key,
-       style: worksheet[key].s
-     }));
-   ```
-
-3. **Data Validation**
-   ```typescript
-   // Access data validation rules
-   const validation = worksheet['!dataValidation'];
-   ```
-
-4. **Sheet Features**
-   - Merged Cells: `worksheet['!merges']`
-   - Hidden Rows/Columns: `worksheet['!rows']`, `worksheet['!cols']`
-   - Sheet Protection: `worksheet['!protect']`
-
-For more features and detailed documentation, visit the [SheetJS Documentation](https://docs.sheetjs.com/).
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT
 
 ## Acknowledgments
 
+- Originally forked from [ArchimedesCrypto/excel-reader-mcp](https://github.com/ArchimdesCrypto/excel-reader-mcp) — thanks for the foundation!
 - Built with [SheetJS](https://sheetjs.com/)
-- Part of the [Model Context Protocol](https://github.com/modelcontextprotocol/mcp) ecosystem

@@ -1,6 +1,6 @@
-import * as XLSX from 'xlsx';
-import { existsSync, readFileSync } from 'fs';
-import type { ExcelData, ReadExcelArgs, ListSheetsArgs } from './types.js';
+import { existsSync, readFileSync } from "node:fs";
+import * as XLSX from "xlsx";
+import type { ExcelData, ListSheetsArgs, ReadExcelArgs } from "./types.js";
 
 const MAX_RESPONSE_SIZE = 100 * 1024; // 100KB default max response size
 
@@ -22,18 +22,18 @@ export function readExcelFile(args: ReadExcelArgs): ExcelData {
 
   const data = readFileSync(filePath);
   const workbook = XLSX.read(data, {
-    type: 'buffer',
+    type: "buffer",
     cellDates: true,
     cellNF: false,
     cellText: false,
-    dateNF: 'yyyy-mm-dd'
+    dateNF: "yyyy-mm-dd",
   });
-  const fileName = filePath.split(/[\\/]/).pop() || '';
+  const fileName = filePath.split(/[\\/]/).pop() || "";
   const selectedSheetName = sheetName || workbook.SheetNames[0];
   const worksheet = workbook.Sheets[selectedSheetName];
   const allData = XLSX.utils.sheet_to_json(worksheet, {
     raw: true,
-    dateNF: 'yyyy-mm-dd'
+    dateNF: "yyyy-mm-dd",
   }) as Record<string, any>[];
 
   const totalRows = allData.length;
@@ -54,10 +54,12 @@ export function readExcelFile(args: ReadExcelArgs): ExcelData {
   const chunkData = allData.slice(startRow, endRow);
 
   const hasMore = endRow < totalRows;
-  const nextChunk = hasMore ? {
-    rowStart: endRow,
-    columns
-  } : undefined;
+  const nextChunk = hasMore
+    ? {
+        rowStart: endRow,
+        columns,
+      }
+    : undefined;
 
   return {
     fileName,
@@ -70,11 +72,11 @@ export function readExcelFile(args: ReadExcelArgs): ExcelData {
         rowStart: startRow,
         rowEnd: endRow,
         columns,
-        data: chunkData
+        data: chunkData,
       },
       hasMore,
-      nextChunk
-    }
+      nextChunk,
+    },
   };
 }
 
@@ -90,8 +92,8 @@ export function listSheets(args: ListSheetsArgs): ListSheetsResult {
   }
 
   const data = readFileSync(filePath);
-  const workbook = XLSX.read(data, { type: 'buffer' });
-  const fileName = filePath.split(/[\\/]/).pop() || '';
+  const workbook = XLSX.read(data, { type: "buffer" });
+  const fileName = filePath.split(/[\\/]/).pop() || "";
   return {
     fileName,
     sheets: workbook.SheetNames,

@@ -1,40 +1,37 @@
-import JSZip from 'jszip';
-import * as XLSX from 'xlsx';
-import { existsSync, readFileSync } from 'fs';
-import {
-  ErrorCode,
-  McpError,
-} from '@modelcontextprotocol/sdk/types.js';
-import type { ExtractedImage, GetExcelImagesArgs, ImagePosition } from './types.js';
-import { extractXlsImages } from './xls-image-extractor.js';
+import { existsSync, readFileSync } from "node:fs";
+import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
+import JSZip from "jszip";
+import * as XLSX from "xlsx";
+import type { ExtractedImage, GetExcelImagesArgs, ImagePosition } from "./types.js";
+import { extractXlsImages } from "./xls-image-extractor.js";
 
 const MIME_TYPES: Record<string, string> = {
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.gif': 'image/gif',
-  '.bmp': 'image/bmp',
-  '.tiff': 'image/tiff',
-  '.tif': 'image/tiff',
-  '.emf': 'image/x-emf',
-  '.wmf': 'image/x-wmf',
-  '.svg': 'image/svg+xml',
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".bmp": "image/bmp",
+  ".tiff": "image/tiff",
+  ".tif": "image/tiff",
+  ".emf": "image/x-emf",
+  ".wmf": "image/x-wmf",
+  ".svg": "image/svg+xml",
 };
 
 const MAX_IMAGES_SIZE = 10 * 1024 * 1024; // 10MB total base64 size limit
 
 function resolveRelativePath(baseDir: string, target: string): string {
-  if (target.startsWith('/')) return target.slice(1);
-  const parts = baseDir.split('/');
-  const targetParts = target.split('/');
+  if (target.startsWith("/")) return target.slice(1);
+  const parts = baseDir.split("/");
+  const targetParts = target.split("/");
   for (const part of targetParts) {
-    if (part === '..') {
+    if (part === "..") {
       parts.pop();
-    } else if (part !== '.') {
+    } else if (part !== ".") {
       parts.push(part);
     }
   }
-  return parts.join('/');
+  return parts.join("/");
 }
 
 export async function extractImages(args: GetExcelImagesArgs): Promise<{
@@ -50,7 +47,7 @@ export async function extractImages(args: GetExcelImagesArgs): Promise<{
 
   // Detect file format by magic bytes
   if (buffer.length < 4) {
-    throw new McpError(ErrorCode.InvalidRequest, 'File is too small to be a valid Excel file.');
+    throw new McpError(ErrorCode.InvalidRequest, "File is too small to be a valid Excel file.");
   }
 
   const isZip = buffer[0] === 0x50 && buffer[1] === 0x4b; // PK = ZIP (.xlsx)
@@ -59,7 +56,7 @@ export async function extractImages(args: GetExcelImagesArgs): Promise<{
   if (!isZip && !isOle2) {
     throw new McpError(
       ErrorCode.InvalidRequest,
-      'File is not a valid Excel file. Expected .xlsx (ZIP) or .xls (OLE2) format.'
+      "File is not a valid Excel file. Expected .xlsx (ZIP) or .xls (OLE2) format.",
     );
   }
 
@@ -71,7 +68,7 @@ export async function extractImages(args: GetExcelImagesArgs): Promise<{
   const zip = await JSZip.loadAsync(buffer);
 
   // Get sheet names from the workbook via SheetJS
-  const workbook = XLSX.read(buffer, { type: 'buffer' });
+  const workbook = XLSX.read(buffer, { type: "buffer" });
   const sheetNames = workbook.SheetNames;
 
   if (sheetName && !sheetNames.includes(sheetName)) {
@@ -81,14 +78,14 @@ export async function extractImages(args: GetExcelImagesArgs): Promise<{
   // 1. Collect all images from xl/media/
   const mediaFiles: Map<string, { data: string; mimeType: string }> = new Map();
   for (const [path, file] of Object.entries(zip.files)) {
-    if (path.startsWith('xl/media/') && !file.dir) {
-      const ext = '.' + path.split('.').pop()!.toLowerCase();
-      const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
-      const base64 = await file.async('base64');
-      const fileName = path.split('/').pop()!;
+    if (path.startsWith("xl/media/") && !file.dir) {
+      const ext = `.${path.split(".").pop()?.toLowerCase()}`;
+      const mimeType = MIME_TYPES[ext] || "application/octet-stream";
+      const base64 = await file.async("base64");
+      const fileName = path.split("/").pop()!;
       mediaFiles.set(path, { data: base64, mimeType });
       // Also index by relative path from xl/ for rels matching
-      mediaFiles.set('media/' + fileName, { data: base64, mimeType });
+      mediaFiles.set(`media/${fileName}`, { data: base64, mimeType });
     }
   }
 
@@ -97,26 +94,26 @@ export async function extractImages(args: GetExcelImagesArgs): Promise<{
   }
 
   // 2. Parse workbook.xml.rels to find sheet→file mapping
-  const workbookRelsFile = zip.files['xl/_rels/workbook.xml.rels'];
+  const workbookRelsFile = zip.files["xl/_rels/workbook.xml.rels"];
   const sheetFileMap: Map<string, number> = new Map(); // e.g. "xl/worksheets/sheet1.xml" → 0 (index in sheetNames)
 
   if (workbookRelsFile) {
-    const workbookRelsXml = await workbookRelsFile.async('text');
+    const workbookRelsXml = await workbookRelsFile.async("text");
     // Match sheet relationships
     const sheetRels = [...workbookRelsXml.matchAll(/Id="(rId\d+)"[^>]*Target="([^"]+)"/g)];
 
     // Parse workbook.xml to get sheet name → rId mapping
-    const workbookFile = zip.files['xl/workbook.xml'];
+    const workbookFile = zip.files["xl/workbook.xml"];
     if (workbookFile) {
-      const workbookXml = await workbookFile.async('text');
+      const workbookXml = await workbookFile.async("text");
       const sheetEntries = [...workbookXml.matchAll(/<sheet[^>]+name="([^"]+)"[^>]+r:id="(rId\d+)"/g)];
 
       for (const sheetEntry of sheetEntries) {
         const name = sheetEntry[1];
         const rId = sheetEntry[2];
-        const rel = sheetRels.find(r => r[1] === rId);
+        const rel = sheetRels.find((r) => r[1] === rId);
         if (rel) {
-          const target = rel[2].startsWith('/') ? rel[2].slice(1) : 'xl/' + rel[2];
+          const target = rel[2].startsWith("/") ? rel[2].slice(1) : `xl/${rel[2]}`;
           const sheetIdx = sheetNames.indexOf(name);
           if (sheetIdx !== -1) {
             sheetFileMap.set(target, sheetIdx);
@@ -138,13 +135,13 @@ export async function extractImages(args: GetExcelImagesArgs): Promise<{
     if (sheetName && currentSheetName !== sheetName) continue;
 
     // Find the sheet's rels file
-    const sheetFileName = sheetPath.split('/').pop()!;
-    const sheetDir = sheetPath.substring(0, sheetPath.lastIndexOf('/'));
+    const sheetFileName = sheetPath.split("/").pop()!;
+    const sheetDir = sheetPath.substring(0, sheetPath.lastIndexOf("/"));
     const sheetRelsPath = `${sheetDir}/_rels/${sheetFileName}.rels`;
     const sheetRelsFile = zip.files[sheetRelsPath];
     if (!sheetRelsFile) continue;
 
-    const sheetRelsXml = await sheetRelsFile.async('text');
+    const sheetRelsXml = await sheetRelsFile.async("text");
     // Find drawing relationships
     const drawingRels = [...sheetRelsXml.matchAll(/Id="(rId\d+)"[^>]*Target="([^"]*drawing[^"]*)"/gi)];
 
@@ -156,17 +153,17 @@ export async function extractImages(args: GetExcelImagesArgs): Promise<{
       const drawingFile = zip.files[normalizedDrawingPath];
       if (!drawingFile) continue;
 
-      const drawingXml = await drawingFile.async('text');
+      const drawingXml = await drawingFile.async("text");
 
       // Parse the drawing's own rels to map rId → image file
-      const drawingFileName = normalizedDrawingPath.split('/').pop()!;
-      const drawingDir = normalizedDrawingPath.substring(0, normalizedDrawingPath.lastIndexOf('/'));
+      const drawingFileName = normalizedDrawingPath.split("/").pop()!;
+      const drawingDir = normalizedDrawingPath.substring(0, normalizedDrawingPath.lastIndexOf("/"));
       const drawingRelsPath = `${drawingDir}/_rels/${drawingFileName}.rels`;
       const drawingRelsFile = zip.files[drawingRelsPath];
       const imageRIdMap: Map<string, string> = new Map(); // rId → full image path
 
       if (drawingRelsFile) {
-        const drawingRelsXml = await drawingRelsFile.async('text');
+        const drawingRelsXml = await drawingRelsFile.async("text");
         const imageRels = [...drawingRelsXml.matchAll(/Id="(rId\d+)"[^>]*Target="([^"]+)"/g)];
         for (const imageRel of imageRels) {
           const fullPath = resolveRelativePath(drawingDir, imageRel[2]);
@@ -183,7 +180,7 @@ export async function extractImages(args: GetExcelImagesArgs): Promise<{
       ];
 
       for (const pattern of anchorPatterns) {
-        const isTwoCell = pattern.source.includes('twoCellAnchor');
+        const isTwoCell = pattern.source.includes("twoCellAnchor");
         let match;
         while ((match = pattern.exec(drawingXml)) !== null) {
           const anchorContent = match[1];
@@ -193,16 +190,20 @@ export async function extractImages(args: GetExcelImagesArgs): Promise<{
           if (allBlipMatches.length === 0) continue;
 
           // Extract from position
-          const fromMatch = anchorContent.match(/<xdr:from>\s*<xdr:col>(\d+)<\/xdr:col>\s*<xdr:colOff>\d+<\/xdr:colOff>\s*<xdr:row>(\d+)<\/xdr:row>/);
-          const fromRow = fromMatch ? parseInt(fromMatch[2]) : 0;
-          const fromCol = fromMatch ? parseInt(fromMatch[1]) : 0;
+          const fromMatch = anchorContent.match(
+            /<xdr:from>\s*<xdr:col>(\d+)<\/xdr:col>\s*<xdr:colOff>\d+<\/xdr:colOff>\s*<xdr:row>(\d+)<\/xdr:row>/,
+          );
+          const fromRow = fromMatch ? parseInt(fromMatch[2], 10) : 0;
+          const fromCol = fromMatch ? parseInt(fromMatch[1], 10) : 0;
 
           let toRow = fromRow;
           let toCol = fromCol;
           if (isTwoCell) {
-            const toMatch = anchorContent.match(/<xdr:to>\s*<xdr:col>(\d+)<\/xdr:col>\s*<xdr:colOff>\d+<\/xdr:colOff>\s*<xdr:row>(\d+)<\/xdr:row>/);
-            toRow = toMatch ? parseInt(toMatch[2]) : fromRow;
-            toCol = toMatch ? parseInt(toMatch[1]) : fromCol;
+            const toMatch = anchorContent.match(
+              /<xdr:to>\s*<xdr:col>(\d+)<\/xdr:col>\s*<xdr:colOff>\d+<\/xdr:colOff>\s*<xdr:row>(\d+)<\/xdr:row>/,
+            );
+            toRow = toMatch ? parseInt(toMatch[2], 10) : fromRow;
+            toCol = toMatch ? parseInt(toMatch[1], 10) : fromCol;
           }
 
           for (const blipMatch of allBlipMatches) {
@@ -252,7 +253,7 @@ export async function extractImages(args: GetExcelImagesArgs): Promise<{
     }
     totalSize += media.data.length;
 
-    const fileName = imagePath.split('/').pop()!;
+    const fileName = imagePath.split("/").pop()!;
     images.push({
       name: fileName,
       mimeType: media.mimeType,
@@ -264,7 +265,7 @@ export async function extractImages(args: GetExcelImagesArgs): Promise<{
   // Then add unmapped images (if not filtering by sheet)
   if (!truncated && !sheetName) {
     for (const [path, media] of mediaFiles.entries()) {
-      if (!path.startsWith('xl/media/')) continue;
+      if (!path.startsWith("xl/media/")) continue;
       if (imageMap.has(path)) continue;
 
       if (totalSize + media.data.length > MAX_IMAGES_SIZE) {
@@ -273,7 +274,7 @@ export async function extractImages(args: GetExcelImagesArgs): Promise<{
       }
       totalSize += media.data.length;
 
-      const fileName = path.split('/').pop()!;
+      const fileName = path.split("/").pop()!;
       images.push({
         name: fileName,
         mimeType: media.mimeType,

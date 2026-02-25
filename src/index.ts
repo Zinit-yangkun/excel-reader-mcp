@@ -1,34 +1,27 @@
 #!/usr/bin/env node
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-  CallToolRequestSchema,
-  ErrorCode,
-  ListToolsRequestSchema,
-  McpError,
-} from '@modelcontextprotocol/sdk/types.js';
-import { extractImages } from './image-extractor.js';
-import { readExcelFile, listSheets } from './excel-reader.js';
-import type { ReadExcelArgs, ListSheetsArgs, GetExcelImagesArgs } from './types.js';
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { CallToolRequestSchema, ErrorCode, ListToolsRequestSchema, McpError } from "@modelcontextprotocol/sdk/types.js";
+import { listSheets, readExcelFile } from "./excel-reader.js";
+import { extractImages } from "./image-extractor.js";
+import type { GetExcelImagesArgs, ListSheetsArgs, ReadExcelArgs } from "./types.js";
 
 const isValidReadExcelArgs = (args: any): args is ReadExcelArgs =>
-  typeof args === 'object' &&
+  typeof args === "object" &&
   args !== null &&
-  typeof args.filePath === 'string' &&
-  (args.sheetName === undefined || typeof args.sheetName === 'string') &&
-  (args.startRow === undefined || typeof args.startRow === 'number') &&
-  (args.maxRows === undefined || typeof args.maxRows === 'number');
+  typeof args.filePath === "string" &&
+  (args.sheetName === undefined || typeof args.sheetName === "string") &&
+  (args.startRow === undefined || typeof args.startRow === "number") &&
+  (args.maxRows === undefined || typeof args.maxRows === "number");
 
 const isValidListSheetsArgs = (args: any): args is ListSheetsArgs =>
-  typeof args === 'object' &&
-  args !== null &&
-  typeof args.filePath === 'string';
+  typeof args === "object" && args !== null && typeof args.filePath === "string";
 
 const isValidGetExcelImagesArgs = (args: any): args is GetExcelImagesArgs =>
-  typeof args === 'object' &&
+  typeof args === "object" &&
   args !== null &&
-  typeof args.filePath === 'string' &&
-  (args.sheetName === undefined || typeof args.sheetName === 'string');
+  typeof args.filePath === "string" &&
+  (args.sheetName === undefined || typeof args.sheetName === "string");
 
 class ExcelReaderServer {
   private server: Server;
@@ -36,21 +29,21 @@ class ExcelReaderServer {
   constructor() {
     this.server = new Server(
       {
-        name: 'excel-reader',
-        version: '1.0.0',
+        name: "excel-reader",
+        version: "1.0.0",
       },
       {
         capabilities: {
           tools: {},
         },
-      }
+      },
     );
 
     this.setupToolHandlers();
 
     // Error handling
-    this.server.onerror = (error) => console.error('[MCP Error]', error);
-    process.on('SIGINT', async () => {
+    this.server.onerror = (error) => console.error("[MCP Error]", error);
+    process.on("SIGINT", async () => {
       await this.server.close();
       process.exit(0);
     });
@@ -60,61 +53,62 @@ class ExcelReaderServer {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
         {
-          name: 'read_excel',
-          description: 'Read an Excel file and return its contents as structured data',
+          name: "read_excel",
+          description: "Read an Excel file and return its contents as structured data",
           inputSchema: {
-            type: 'object',
+            type: "object",
             properties: {
               filePath: {
-                type: 'string',
-                description: 'Path to the Excel file to read',
+                type: "string",
+                description: "Path to the Excel file to read",
               },
               sheetName: {
-                type: 'string',
-                description: 'Name of the sheet to read (optional)',
+                type: "string",
+                description: "Name of the sheet to read (optional)",
               },
               startRow: {
-                type: 'number',
-                description: 'Starting row index (optional)',
+                type: "number",
+                description: "Starting row index (optional)",
               },
               maxRows: {
-                type: 'number',
-                description: 'Maximum number of rows to read (optional)',
+                type: "number",
+                description: "Maximum number of rows to read (optional)",
               },
             },
-            required: ['filePath'],
+            required: ["filePath"],
           },
         },
         {
-          name: 'list_sheets',
-          description: 'List all sheet names in an Excel file',
+          name: "list_sheets",
+          description: "List all sheet names in an Excel file",
           inputSchema: {
-            type: 'object',
+            type: "object",
             properties: {
               filePath: {
-                type: 'string',
-                description: 'Path to the Excel file',
+                type: "string",
+                description: "Path to the Excel file",
               },
             },
-            required: ['filePath'],
+            required: ["filePath"],
           },
         },
         {
-          name: 'get_excel_images',
-          description: 'Extract embedded images from an Excel file (.xlsx or .xls), including position information (sheet, row, column). Returns image metadata and base64-encoded image data.',
+          name: "get_excel_images",
+          description:
+            "Extract embedded images from an Excel file (.xlsx or .xls), including position information (sheet, row, column). Returns image metadata and base64-encoded image data.",
           inputSchema: {
-            type: 'object',
+            type: "object",
             properties: {
               filePath: {
-                type: 'string',
-                description: 'Path to the Excel file (.xlsx or .xls)',
+                type: "string",
+                description: "Path to the Excel file (.xlsx or .xls)",
               },
               sheetName: {
-                type: 'string',
-                description: 'Only return images from this sheet (optional, returns all sheets if omitted)',
+                type: "string",
+                description: "Only return images from this sheet (optional, returns all sheets if omitted)",
               },
             },
-            required: ['filePath'],
+            required: ["filePath"],
           },
         },
       ],
@@ -123,12 +117,9 @@ class ExcelReaderServer {
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name } = request.params;
 
-      if (name === 'read_excel') {
+      if (name === "read_excel") {
         if (!isValidReadExcelArgs(request.params.arguments)) {
-          throw new McpError(
-            ErrorCode.InvalidParams,
-            'Invalid read_excel arguments'
-          );
+          throw new McpError(ErrorCode.InvalidParams, "Invalid read_excel arguments");
         }
 
         try {
@@ -136,7 +127,7 @@ class ExcelReaderServer {
           return {
             content: [
               {
-                type: 'text',
+                type: "text",
                 text: JSON.stringify(data, null, 2),
               },
             ],
@@ -147,15 +138,12 @@ class ExcelReaderServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error reading Excel file: ${error instanceof Error ? error.message : String(error)}`
+            `Error reading Excel file: ${error instanceof Error ? error.message : String(error)}`,
           );
         }
-      } else if (name === 'list_sheets') {
+      } else if (name === "list_sheets") {
         if (!isValidListSheetsArgs(request.params.arguments)) {
-          throw new McpError(
-            ErrorCode.InvalidParams,
-            'Invalid list_sheets arguments'
-          );
+          throw new McpError(ErrorCode.InvalidParams, "Invalid list_sheets arguments");
         }
 
         try {
@@ -163,7 +151,7 @@ class ExcelReaderServer {
           return {
             content: [
               {
-                type: 'text',
+                type: "text",
                 text: JSON.stringify(result, null, 2),
               },
             ],
@@ -174,33 +162,30 @@ class ExcelReaderServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error reading Excel file: ${error instanceof Error ? error.message : String(error)}`
+            `Error reading Excel file: ${error instanceof Error ? error.message : String(error)}`,
           );
         }
-      } else if (name === 'get_excel_images') {
+      } else if (name === "get_excel_images") {
         if (!isValidGetExcelImagesArgs(request.params.arguments)) {
-          throw new McpError(
-            ErrorCode.InvalidParams,
-            'Invalid get_excel_images arguments'
-          );
+          throw new McpError(ErrorCode.InvalidParams, "Invalid get_excel_images arguments");
         }
 
         try {
           const { images, truncated } = await extractImages(request.params.arguments);
-          const fileName = request.params.arguments.filePath.split(/[\\/]/).pop() || '';
+          const fileName = request.params.arguments.filePath.split(/[\\/]/).pop() || "";
 
           const warnings: string[] = [];
           if (truncated) {
-            warnings.push('Image data was truncated because total size exceeded 10MB limit. Some images were omitted.');
+            warnings.push("Image data was truncated because total size exceeded 10MB limit. Some images were omitted.");
           }
 
           // Check for EMF/WMF images
           const unsupportedFormats = images.filter(
-            img => img.mimeType === 'image/x-emf' || img.mimeType === 'image/x-wmf'
+            (img) => img.mimeType === "image/x-emf" || img.mimeType === "image/x-wmf",
           );
           if (unsupportedFormats.length > 0) {
             warnings.push(
-              `${unsupportedFormats.length} image(s) are in EMF/WMF format, which most clients cannot display: ${unsupportedFormats.map(i => i.name).join(', ')}`
+              `${unsupportedFormats.length} image(s) are in EMF/WMF format, which most clients cannot display: ${unsupportedFormats.map((i) => i.name).join(", ")}`,
             );
           }
 
@@ -217,18 +202,18 @@ class ExcelReaderServer {
 
           const content: any[] = [
             {
-              type: 'text',
+              type: "text",
               text: JSON.stringify(metadata, null, 2),
             },
           ];
 
           // Add image content blocks for displayable images
           for (const img of images) {
-            if (img.mimeType === 'image/x-emf' || img.mimeType === 'image/x-wmf') {
+            if (img.mimeType === "image/x-emf" || img.mimeType === "image/x-wmf") {
               continue; // Skip non-displayable formats
             }
             content.push({
-              type: 'image',
+              type: "image",
               data: img.data,
               mimeType: img.mimeType,
             });
@@ -241,14 +226,11 @@ class ExcelReaderServer {
           }
           throw new McpError(
             ErrorCode.InternalError,
-            `Error extracting images: ${error instanceof Error ? error.message : String(error)}`
+            `Error extracting images: ${error instanceof Error ? error.message : String(error)}`,
           );
         }
       } else {
-        throw new McpError(
-          ErrorCode.MethodNotFound,
-          `Unknown tool: ${name}`
-        );
+        throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
       }
     });
   }
@@ -256,7 +238,7 @@ class ExcelReaderServer {
   async run() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.error('Excel Reader MCP server running on stdio');
+    console.error("Excel Reader MCP server running on stdio");
   }
 }
 

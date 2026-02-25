@@ -1,12 +1,9 @@
-import * as CFB from 'cfb';
-import * as XLSX from 'xlsx';
-import { existsSync, readFileSync } from 'fs';
-import { inflateSync } from 'zlib';
-import {
-  ErrorCode,
-  McpError,
-} from '@modelcontextprotocol/sdk/types.js';
-import type { ExtractedImage, GetExcelImagesArgs, ImagePosition } from './types.js';
+import { existsSync, readFileSync } from "node:fs";
+import { inflateSync } from "node:zlib";
+import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
+import * as CFB from "cfb";
+import * as XLSX from "xlsx";
+import type { ExtractedImage, GetExcelImagesArgs, ImagePosition } from "./types.js";
 
 const MAX_IMAGES_SIZE = 10 * 1024 * 1024; // 10MB total base64 size limit
 
@@ -15,20 +12,20 @@ const BIFF_MSODRAWINGGROUP = 0x00eb;
 const BIFF_MSODRAWING = 0x00ec;
 const BIFF_CONTINUE = 0x003c;
 const BIFF_BOF = 0x0809;
-const BIFF_BOUNDSHEET = 0x0085;
+const _BIFF_BOUNDSHEET = 0x0085;
 const BIFF_EOF = 0x000a;
-const BIFF_OBJ = 0x005d;
+const _BIFF_OBJ = 0x005d;
 
 // Escher record types
 const ESCHER_DGG_CONTAINER = 0xf000;
 const ESCHER_BSTORE_CONTAINER = 0xf001;
-const ESCHER_DG_CONTAINER = 0xf002;
-const ESCHER_SPGR_CONTAINER = 0xf003;
+const _ESCHER_DG_CONTAINER = 0xf002;
+const _ESCHER_SPGR_CONTAINER = 0xf003;
 const ESCHER_SP_CONTAINER = 0xf004;
 const ESCHER_BSE = 0xf007;
 const ESCHER_SP = 0xf00a;
 const ESCHER_CLIENT_ANCHOR = 0xf010;
-const ESCHER_CLIENT_DATA = 0xf011;
+const _ESCHER_CLIENT_DATA = 0xf011;
 
 // BLIP types
 const ESCHER_BLIP_EMF = 0xf01a;
@@ -73,15 +70,23 @@ interface DrawingAnchor {
 
 function getMimeAndExt(blipType: number): { mimeType: string; extension: string } {
   switch (blipType) {
-    case ESCHER_BLIP_EMF: return { mimeType: 'image/x-emf', extension: '.emf' };
-    case ESCHER_BLIP_WMF: return { mimeType: 'image/x-wmf', extension: '.wmf' };
-    case ESCHER_BLIP_PICT: return { mimeType: 'image/pict', extension: '.pict' };
+    case ESCHER_BLIP_EMF:
+      return { mimeType: "image/x-emf", extension: ".emf" };
+    case ESCHER_BLIP_WMF:
+      return { mimeType: "image/x-wmf", extension: ".wmf" };
+    case ESCHER_BLIP_PICT:
+      return { mimeType: "image/pict", extension: ".pict" };
     case ESCHER_BLIP_JPEG:
-    case ESCHER_BLIP_JPEG2: return { mimeType: 'image/jpeg', extension: '.jpg' };
-    case ESCHER_BLIP_PNG: return { mimeType: 'image/png', extension: '.png' };
-    case ESCHER_BLIP_DIB: return { mimeType: 'image/bmp', extension: '.bmp' };
-    case ESCHER_BLIP_TIFF: return { mimeType: 'image/tiff', extension: '.tiff' };
-    default: return { mimeType: 'application/octet-stream', extension: '.bin' };
+    case ESCHER_BLIP_JPEG2:
+      return { mimeType: "image/jpeg", extension: ".jpg" };
+    case ESCHER_BLIP_PNG:
+      return { mimeType: "image/png", extension: ".png" };
+    case ESCHER_BLIP_DIB:
+      return { mimeType: "image/bmp", extension: ".bmp" };
+    case ESCHER_BLIP_TIFF:
+      return { mimeType: "image/tiff", extension: ".tiff" };
+    default:
+      return { mimeType: "application/octet-stream", extension: ".bin" };
   }
 }
 
@@ -176,7 +181,7 @@ function extractBlipsFromDrawingGroup(data: Buffer): BlipInfo[] {
         // Total BSE header = 36 bytes, then optional name (cbName bytes), then BLIP data
         if (bse.data.length < 36) continue;
 
-        const btWin32 = bse.data.readUInt8(0);
+        const _btWin32 = bse.data.readUInt8(0);
         const cbName = bse.data.readUInt8(33);
         const blipOffset = 36 + cbName;
 
@@ -199,19 +204,19 @@ function extractBlipsFromDrawingGroup(data: Buffer): BlipInfo[] {
         if (blipType === ESCHER_BLIP_EMF || blipType === ESCHER_BLIP_WMF || blipType === ESCHER_BLIP_PICT) {
           // Metafile BLIP: UID(16) + possibly UID2(16) + cb(4) + rcBounds(16) + ptSize(8) + cbSave(4) + compression(1) + filter(1)
           // instance value tells us if there's a second UID
-          const hasUID2 = (blipRec.instance === 0x3d5 || blipRec.instance === 0x217 || blipRec.instance === 0x543);
+          const hasUID2 = blipRec.instance === 0x3d5 || blipRec.instance === 0x217 || blipRec.instance === 0x543;
           imageDataOffset = 16 + (hasUID2 ? 16 : 0) + 34;
         } else if (blipType === ESCHER_BLIP_JPEG || blipType === ESCHER_BLIP_JPEG2) {
-          const hasUID2 = (blipRec.instance === 0x46b || blipRec.instance === 0x6e3);
+          const hasUID2 = blipRec.instance === 0x46b || blipRec.instance === 0x6e3;
           imageDataOffset = 16 + (hasUID2 ? 16 : 0) + 1;
         } else if (blipType === ESCHER_BLIP_PNG) {
-          const hasUID2 = (blipRec.instance === 0x6e1);
+          const hasUID2 = blipRec.instance === 0x6e1;
           imageDataOffset = 16 + (hasUID2 ? 16 : 0) + 1;
         } else if (blipType === ESCHER_BLIP_DIB) {
-          const hasUID2 = (blipRec.instance === 0x7a9);
+          const hasUID2 = blipRec.instance === 0x7a9;
           imageDataOffset = 16 + (hasUID2 ? 16 : 0) + 1;
         } else if (blipType === ESCHER_BLIP_TIFF) {
-          const hasUID2 = (blipRec.instance === 0x6e5);
+          const hasUID2 = blipRec.instance === 0x6e5;
           imageDataOffset = 16 + (hasUID2 ? 16 : 0) + 1;
         } else {
           // Unknown BLIP type, try to extract with minimal header skip
@@ -264,7 +269,6 @@ function parseSheetDrawings(drawingData: Buffer, sheetName: string): DrawingAnch
       if (rec.type === ESCHER_SP_CONTAINER) {
         // This shouldn't happen since SP_CONTAINER is a container, but handle defensively
         processContainer(rec.data);
-        continue;
       }
     }
 
@@ -353,7 +357,7 @@ export async function extractXlsImages(args: GetExcelImagesArgs): Promise<{
   const buffer = readFileSync(filePath);
 
   // Parse with SheetJS to get sheet names
-  const workbook = XLSX.read(buffer, { type: 'buffer' });
+  const workbook = XLSX.read(buffer, { type: "buffer" });
   const sheetNames = workbook.SheetNames;
 
   if (sheetName && !sheetNames.includes(sheetName)) {
@@ -361,10 +365,10 @@ export async function extractXlsImages(args: GetExcelImagesArgs): Promise<{
   }
 
   // Parse CFB to get the Workbook stream
-  const cfb = CFB.read(buffer, { type: 'buffer' });
-  const workbookEntry = CFB.find(cfb, '/Workbook') || CFB.find(cfb, '/Book');
+  const cfb = CFB.read(buffer, { type: "buffer" });
+  const workbookEntry = CFB.find(cfb, "/Workbook") || CFB.find(cfb, "/Book");
   if (!workbookEntry) {
-    throw new McpError(ErrorCode.InvalidRequest, 'Cannot find Workbook stream in .xls file');
+    throw new McpError(ErrorCode.InvalidRequest, "Cannot find Workbook stream in .xls file");
   }
 
   const wbBuf = Buffer.from(workbookEntry.content);
@@ -407,9 +411,7 @@ export async function extractXlsImages(args: GetExcelImagesArgs): Promise<{
   }
 
   // Concatenate all MsoDrawingGroup data
-  const drawingGroupData = drawingGroupBuffers.length > 0
-    ? Buffer.concat(drawingGroupBuffers)
-    : null;
+  const drawingGroupData = drawingGroupBuffers.length > 0 ? Buffer.concat(drawingGroupBuffers) : null;
 
   if (!drawingGroupData || drawingGroupData.length === 0) {
     return { images: [], truncated: false };
@@ -456,7 +458,7 @@ export async function extractXlsImages(args: GetExcelImagesArgs): Promise<{
   let truncated = false;
 
   for (const blip of blips) {
-    const base64 = blip.data.toString('base64');
+    const base64 = blip.data.toString("base64");
     if (totalSize + base64.length > MAX_IMAGES_SIZE) {
       truncated = true;
       break;

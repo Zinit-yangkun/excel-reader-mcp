@@ -1,5 +1,5 @@
 {
-  "name": "@archimdescrypto/excel-reader-mcp",
+  "name": "excel-reader-mcp",
   "version": "1.0.0",
   "description": "MCP server for reading Excel files with automatic chunking and pagination support",
   "type": "module",
@@ -16,11 +16,11 @@
     "lint": "biome lint src/"
   },
   "bin": {
-    "excel-reader": "./build/index.js"
+    "excel-reader": "build/index.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ArchimdesCrypto/excel-reader-mcp.git"
+    "url": "git+https://github.com/Zinit-yangkun/excel-reader-mcp.git"
   },
   "keywords": [
     "excel",
@@ -31,12 +31,12 @@
     "chunking",
     "model-context-protocol"
   ],
-  "author": "ArchimdesCrypto",
+  "author": "Hono",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/ArchimdesCrypto/excel-reader-mcp/issues"
+    "url": "https://github.com/Zinit-yangkun/excel-reader-mcp/issues"
   },
-  "homepage": "https://github.com/ArchimdesCrypto/excel-reader-mcp#readme",
+  "homepage": "https://github.com/Zinit-yangkun/excel-reader-mcp#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.26.0",
     "cfb": "^1.2.2",

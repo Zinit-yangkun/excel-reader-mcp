@@ -10,11 +10,12 @@ A [Model Context Protocol](https://modelcontextprotocol.io/) server for reading 
 - Proper date handling
 - Row pagination support
 
-## Installation
+## Usage
+
+Run directly via npx:
 
 ```bash
-npm install
-npm run build
+npx excel-reader-mcp
 ```
 
 ## MCP Configuration
@@ -24,9 +25,13 @@ Add to your MCP settings:
 ```json
 {
   "mcpServers": {
-    "excel-reader": {
-      "command": "node",
-      "args": ["/path/to/excel-reader-mcp/build/index.js"]
+    "excel-reader-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "excel-reader-mcp"
+      ],
+      "env": {}
     }
   }
 }
@@ -63,6 +68,12 @@ Extract embedded images from an Excel file, including position information (shee
 | ----------- | -------- | ------------------------------------------- |
 | `filePath`  | Yes      | Path to the Excel file (.xlsx or .xls)      |
 | `sheetName` | No       | Only return images from the specified sheet |
+
+## Installation
+
+```bash
+npm install -g excel-reader-mcp
+```
 
 ## Development
 

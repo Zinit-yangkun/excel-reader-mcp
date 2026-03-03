@@ -61,25 +61,26 @@ class ExcelReaderServer {
       tools: [
         {
           name: "read_excel",
-          description: "Read an Excel file and return its contents as structured data",
+          description:
+            "Read Excel/spreadsheet files (.xlsx, .xls, .csv) and return structured data. IMPORTANT: This tool MUST be used for any Excel or spreadsheet file — these are binary formats that cannot be read by other tools or standard file readers. Always use this tool first when the user mentions an Excel file, spreadsheet, or .xlsx/.xls/.csv file.",
           inputSchema: {
             type: "object",
             properties: {
               filePath: {
                 type: "string",
-                description: "Path to the Excel file to read",
+                description: "Absolute path to the Excel file (.xlsx, .xls, or .csv)",
               },
               sheetName: {
                 type: "string",
-                description: "Name of the sheet to read (optional)",
+                description: "Name of the sheet to read (optional, defaults to first sheet)",
               },
               startRow: {
                 type: "number",
-                description: "Starting row index (optional)",
+                description: "Starting row index for pagination (optional, 0-based)",
               },
               maxRows: {
                 type: "number",
-                description: "Maximum number of rows to read (optional)",
+                description: "Maximum number of rows to read (optional, useful for large files)",
               },
             },
             required: ["filePath"],
@@ -87,13 +88,14 @@ class ExcelReaderServer {
         },
         {
           name: "list_sheets",
-          description: "List all sheet names in an Excel file",
+          description:
+            "List all sheet names in an Excel file (.xlsx, .xls). Use this to discover available sheets before reading specific data with read_excel.",
           inputSchema: {
             type: "object",
             properties: {
               filePath: {
                 type: "string",
-                description: "Path to the Excel file",
+                description: "Absolute path to the Excel file (.xlsx, .xls)",
               },
             },
             required: ["filePath"],
@@ -102,7 +104,7 @@ class ExcelReaderServer {
         {
           name: "get_excel_images",
           description:
-            "Extract embedded images from an Excel file (.xlsx or .xls), including position information (sheet, row, column). Returns image metadata and base64-encoded image data.",
+            "Extract embedded images from an Excel file (.xlsx or .xls). Returns image metadata (position: sheet, row, column) and base64-encoded image data. Use this when the user asks about images, charts, or visual content in a spreadsheet.",
           inputSchema: {
             type: "object",
             properties: {
